@@ -1,4 +1,6 @@
-FROM kasmweb/core-ubuntu-jammy:1.14.0-rolling
+ARG BASE_TAG="develop"
+ARG BASE_IMAGE="core-ubuntu-focal"
+FROM kasmweb/$BASE_IMAGE:$BASE_TAG
 USER root
 
 ENV HOME /home/kasm-default-profile
@@ -6,14 +8,24 @@ ENV STARTUPDIR /dockerstartup
 ENV INST_SCRIPTS $STARTUPDIR/install
 WORKDIR $HOME
 
-RUN apt update && apt upgrade -y
-RUN apt install -y dpkg xdg-utils unzip
+######### Customize Container Here ###########
 
-RUN wget https://github.com/obsidianmd/obsidian-releases/releases/download/v1.4.14/obsidian_1.4.14_amd64.deb
-RUN dpkg -i obsidian_1.4.14_amd64.deb
+COPY ./scripts $INST_SCRIPTS/obsidian/
+RUN bash $INST_SCRIPTS/obsidian/install_obsidian.sh  && rm -rf $INST_SCRIPTS/obsidian/
+
+COPY ./scripts/custom_startup.sh $STARTUPDIR/custom_startup.sh
+RUN chmod +x $STARTUPDIR/custom_startup.sh
+RUN chmod 755 $STARTUPDIR/custom_startup.sh
+
+
+# Update the desktop environment to be optimized for a single application
+RUN cp $HOME/.config/xfce4/xfconf/single-application-xfce-perchannel-xml/* $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/
+RUN cp /usr/share/backgrounds/bg_kasm.png /usr/share/backgrounds/bg_default.png
+RUN apt-get remove -y xfce4-panel
+
+######### End Customizations ###########
 
 RUN chown 1000:0 $HOME
-RUN $STARTUPDIR/set_user_permission.sh $HOME
 
 ENV HOME /home/kasm-user
 WORKDIR $HOME
